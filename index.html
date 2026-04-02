@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Relax Space</title>
+<style>
+body{
+margin:0;
+background:#0a0f1f;
+overflow:hidden;
+}
+
+canvas{
+display:block;
+}
+</style>
+</head>
+<body>
+
+<canvas id="space"></canvas>
+
+<script>
+
+const canvas = document.getElementById("space");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// ==================== КОНСТАНТЫ ====================
+const MAX_STARS = 160;           // максимальное количество звёзд
+const MAX_DISTANCE = 80;         // расстояние для связей (сильно уменьшено)
+const MAGNET_RADIUS = 180;       // радиус притяжения магнита
+const FALL_SPEED_MIN = 0.75;     // минимальная скорость падения
+const FALL_SPEED_MAX = 1.25;     // максимальная скорость падения  (увеличено в \~2.5 раза)
+const SIDE_SPEED = 0.12;         // разброс по горизонтали (vx)
+const LIFE_DECAY = 0.006;        // как быстро звезда исчезает возле магнита
+// ==================================================
+
+let stars = [];
+
+// магнит в центре
+const magnet = {
+  x: canvas.width/2,
+  y: canvas.height/2,
+  radius: MAGNET_RADIUS
+};
+
+function createStar(){
+  stars.push({
+    x: Math.random()*canvas.width,
+    y: -10,
+    vx: (Math.random()-0.5) * SIDE_SPEED,
+    vy: FALL_SPEED_MIN + Math.random() * (FALL_SPEED_MAX - FALL_SPEED_MIN),
+    life: 1
+  });
+}
+
+function draw(){
+
+  ctx.fillStyle="rgba(10,15,31,0.2)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // магнит
+  ctx.beginPath();
+  ctx.arc(magnet.x, magnet.y, 5, 0, Math.PI*2);
+  ctx.fillStyle="#66e0ff";
+  ctx.fill();
+
+  // движение звезд
+  stars.forEach(s => {
+    s.y += s.vy;
+    s.x += s.vx;
+
+    let dx = magnet.x - s.x;
+    let dy = magnet.y - s.y;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+
+    // притяжение
+    if(dist < magnet.radius){
+      s.x += dx * 0.02;
+      s.y += dy * 0.02;
+      s.life -= LIFE_DECAY;
+    }
+
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 2, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(255,255,255," + s.life + ")";
+    ctx.fill();
+  });
+
+  // линии (связи) — теперь сильно меньше
+  for(let i = 0; i < stars.length; i++){
+    for(let j = i+1; j < stars.length; j++){
+
+      let dx = stars[i].x - stars[j].x;
+      let dy = stars[i].y - stars[j].y;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+
+      if(dist < MAX_DISTANCE){
+        let alpha = Math.min(stars[i].life, stars[j].life) * (1 - dist/MAX_DISTANCE);
+        ctx.beginPath();
+        ctx.moveTo(stars[i].x, stars[i].y);
+        ctx.lineTo(stars[j].x, stars[j].y);
+        ctx.strokeStyle = "rgba(120,220,255," + alpha + ")";
+        ctx.stroke();
+      }
+    }
+  }
+
+  // удаляем исчезнувшие
+  stars = stars.filter(s => s.life > 0 && s.y < canvas.height + 20);
+
+  // новые звезды
+  while(stars.length < MAX_STARS){
+    createStar();
+  }
+
+  requestAnimationFrame(draw);
+}
+
+draw();
+
+</script>
+
+</body>
+</html>
