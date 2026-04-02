@@ -1,130 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Relax Space</title>
-<style>
-body{
-margin:0;
-background:#0a0f1f;
-overflow:hidden;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relax Space</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-canvas{
-display:block;
-}
-a{
-z-index:9999;
-}
-</style>
+    body {
+      background: #0a0f1f;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100vh;
+    }
+
+    a {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 9999;
+      padding: 10px 16px;
+      color: #66e0ff;
+      text-decoration: none;
+      border: 1px solid #66e0ff;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+
+    a:hover {
+      background: rgba(102, 224, 255, 0.1);
+      transform: scale(1.05);
+    }
+  </style>
 </head>
 <body>
-<a href="https://web3my.netlify.app/">web3my</a>
-<canvas id="space"></canvas>
+  <a href="https://web3my.netlify.app/">web3my</a>
+  <canvas id="space"></canvas>
 
-<script>
+  <script>
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    const canvas = document.getElementById("space");
+    const ctx = canvas.getContext("2d");
 
-const canvas = document.getElementById("space");
-const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    // ==================== КОНСТАНТЫ ====================
+    const MAX_STARS = 160;           // максимальное количество звёзд
+    const MAX_DISTANCE = 80;         // расстояние для связей
+    const MAGNET_RADIUS = 180;       // радиус притяжения магнита
+    const FALL_SPEED_MIN = 0.75;     // минимальная скорость падения
+    const FALL_SPEED_MAX = 1.25;     // максимальная скорость падения
+    const SIDE_SPEED = 0.12;         // разброс по горизонтали (vx)
+    const LIFE_DECAY = 0.006;        // скорость исчезновения звезды
 
-// ==================== КОНСТАНТЫ ====================
-const MAX_STARS = 160;           // максимальное количество звёзд
-const MAX_DISTANCE = 80;         // расстояние для связей (сильно уменьшено)
-const MAGNET_RADIUS = 180;       // радиус притяжения магнита
-const FALL_SPEED_MIN = 0.75;     // минимальная скорость падения
-const FALL_SPEED_MAX = 1.25;     // максимальная скорость падения  (увеличено в \~2.5 раза)
-const SIDE_SPEED = 0.12;         // разброс по горизонтали (vx)
-const LIFE_DECAY = 0.006;        // как быстро звезда исчезает возле магнита
-// ==================================================
+    // ==================== ПЕРЕМЕННЫЕ ====================
+    let stars = [];
 
-let stars = [];
+    // Магнит в центре
+    const magnet = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      radius: MAGNET_RADIUS
+    };
 
-// магнит в центре
-const magnet = {
-  x: canvas.width/2,
-  y: canvas.height/2,
-  radius: MAGNET_RADIUS
-};
-
-function createStar(){
-  stars.push({
-    x: Math.random()*canvas.width,
-    y: -10,
-    vx: (Math.random()-0.5) * SIDE_SPEED,
-    vy: FALL_SPEED_MIN + Math.random() * (FALL_SPEED_MAX - FALL_SPEED_MIN),
-    life: 1
-  });
-}
-
-function draw(){
-
-  ctx.fillStyle="rgba(10,15,31,0.2)";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // магнит
-  ctx.beginPath();
-  ctx.arc(magnet.x, magnet.y, 5, 0, Math.PI*2);
-  ctx.fillStyle="#66e0ff";
-  ctx.fill();
-
-  // движение звезд
-  stars.forEach(s => {
-    s.y += s.vy;
-    s.x += s.vx;
-
-    let dx = magnet.x - s.x;
-    let dy = magnet.y - s.y;
-    let dist = Math.sqrt(dx*dx + dy*dy);
-
-    // притяжение
-    if(dist < magnet.radius){
-      s.x += dx * 0.02;
-      s.y += dy * 0.02;
-      s.life -= LIFE_DECAY;
+    // ==================== ФУНКЦИИ ====================
+    function createStar() {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: -10,
+        vx: (Math.random() - 0.5) * SIDE_SPEED,
+        vy: FALL_SPEED_MIN + Math.random() * (FALL_SPEED_MAX - FALL_SPEED_MIN),
+        life: 1
+      });
     }
 
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, 2, 0, Math.PI*2);
-    ctx.fillStyle = "rgba(255,255,255," + s.life + ")";
-    ctx.fill();
-  });
+    function updateStars() {
+      stars.forEach(star => {
+        // Движение
+        star.y += star.vy;
+        star.x += star.vx;
 
-  // линии (связи) — теперь сильно меньше
-  for(let i = 0; i < stars.length; i++){
-    for(let j = i+1; j < stars.length; j++){
+        // Расстояние до магнита
+        const dx = magnet.x - star.x;
+        const dy = magnet.y - star.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-      let dx = stars[i].x - stars[j].x;
-      let dy = stars[i].y - stars[j].y;
-      let dist = Math.sqrt(dx*dx + dy*dy);
+        // Притяжение к магниту
+        if (dist < magnet.radius) {
+          star.x += dx * 0.02;
+          star.y += dy * 0.02;
+          star.life -= LIFE_DECAY;
+        }
+      });
+    }
 
-      if(dist < MAX_DISTANCE){
-        let alpha = Math.min(stars[i].life, stars[j].life) * (1 - dist/MAX_DISTANCE);
+    function drawStars() {
+      stars.forEach(star => {
         ctx.beginPath();
-        ctx.moveTo(stars[i].x, stars[i].y);
-        ctx.lineTo(stars[j].x, stars[j].y);
-        ctx.strokeStyle = "rgba(120,220,255," + alpha + ")";
-        ctx.stroke();
+        ctx.arc(star.x, star.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${star.life})`;
+        ctx.fill();
+      });
+    }
+
+    function drawConnections() {
+      for (let i = 0; i < stars.length; i++) {
+        for (let j = i + 1; j < stars.length; j++) {
+          const dx = stars[i].x - stars[j].x;
+          const dy = stars[i].y - stars[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < MAX_DISTANCE) {
+            const alpha = Math.min(stars[i].life, stars[j].life) * (1 - dist / MAX_DISTANCE);
+            ctx.beginPath();
+            ctx.moveTo(stars[i].x, stars[i].y);
+            ctx.lineTo(stars[j].x, stars[j].y);
+            ctx.strokeStyle = `rgba(120, 220, 255, ${alpha})`;
+            ctx.stroke();
+          }
+        }
       }
     }
-  }
 
-  // удаляем исчезнувшие
-  stars = stars.filter(s => s.life > 0 && s.y < canvas.height + 20);
+    function drawMagnet() {
+      ctx.beginPath();
+      ctx.arc(magnet.x, magnet.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "#66e0ff";
+      ctx.fill();
+    }
 
-  // новые звезды
-  while(stars.length < MAX_STARS){
-    createStar();
-  }
+    function cleanupStars() {
+      stars = stars.filter(star => star.life > 0 && star.y < canvas.height + 20);
+    }
 
-  requestAnimationFrame(draw);
-}
+    function draw() {
+      // Фон с прозрачностью (trail эффект)
+      ctx.fillStyle = "rgba(10, 15, 31, 0.2)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-draw();
+      // Рисование
+      drawMagnet();
+      updateStars();
+      drawStars();
+      drawConnections();
+      cleanupStars();
 
-</script>
+      // Создание новых звёзд
+      while (stars.length < MAX_STARS) {
+        createStar();
+      }
 
+      requestAnimationFrame(draw);
+    }
+
+    // ==================== ОБРАБОТЧИКИ СОБЫТИЙ ====================
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      magnet.x = canvas.width / 2;
+      magnet.y = canvas.height / 2;
+    });
+
+    // ==================== ЗАПУСК ====================
+    draw();
+  </script>
 </body>
 </html>
